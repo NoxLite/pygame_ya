@@ -13,13 +13,17 @@ all_another_sprites = pygame.sprite.Group()
 all_cells_sprites = pygame.sprite.Group()
 anim_sprites = pygame.sprite.Group()
 menu_sprites = pygame.sprite.Group()
+quest_sprites = pygame.sprite.Group()
 info_file = [elem[:-1].split(' ') for elem in open('map.txt', 'r').readlines()]
-print(info_file)
+quest_form = [elem[:-1].split('/') for elem in open('quests.txt', 'r', encoding='utf8').readlines()]
 map = info_file[:-2]
 houses = ['home_1.png', 'home_2.png', 'home_3.png']
 choise = 1
 types = {1: 'Ничего', 2: 'Дом', 'c': 'Очистить карту'}
 types_defeat = {1: 'Пушки', 2: 'Армия', 3: 'Ряд танков', 4: 'Самолеты'}
+quest_info = {}
+for elem in quest_form:
+    quest_form[int(elem[0])] = [elem[1], int(elem[2]), elem[3], elem[4]]
 choise_defeat = 1
 mojo = int(info_file[-2][0])
 peoples = int(info_file[-1][0])
@@ -32,6 +36,10 @@ running_quest = False
 logo = tittle_font.render('YA_GAME', True, 'white')
 clock = pygame.time.Clock()
 clock.tick(10)
+m = 11
+p = 6
+c = 7
+completed_quest = 0
 
 
 class Map:
@@ -112,6 +120,16 @@ class Button(pygame.sprite.Sprite):
         pygame.draw.rect(screen, (0, 255, 0), (self.x, self.y, self.size[0], self.size[1]), 0)
 
 
+class House(pygame.sprite.Sprite):
+    def __init__(self, x, y, row, col, map):
+        super().__init__()
+        self.image = load_image('home_' + str(map[row][col][1]) + '.png')
+        self.image.convert()
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+
 class Stat(pygame.sprite.Sprite):
     def __init__(self, x, y, stat, image):
         self.x = x
@@ -143,6 +161,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.image.convert_alpha()
         self.rect = self.rect.move(x, y)
         self.end = columns * rows
+        self.d = 4
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -162,6 +181,62 @@ class AnimatedSprite(pygame.sprite.Sprite):
             return False
         else:
             return True
+
+
+class Quest(pygame.sprite.Sprite):
+    def __init__(self, image, x, y):
+        global quest_sprites
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.image = load_image(f'buttons_test\{image}')
+        self.money = Button('mojo_quest.png', self.x + 30, self.y - 10, 100, 150)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.get_it = False
+        self.completed_sprites = pygame.sprite.Group()
+
+    def set_quest(self, id, screen):
+        self.completed_sprites = pygame.sprite.Group()
+        self.money = Button('mojo_quest.png', self.x + 30, self.y - 10, 100, 150)
+        self.type = id
+        global quest_form
+        self.completed_sprites.add(self.money)
+        self.pay = text_font.render(str(quest_form[self.type][1]), True, 'green')
+        self.completed = text_font.render(f'{quest_form[self.type][2]}/{quest_form[self.type][3]}', True, 'green')
+        self.text = quest_form[self.type][0].split(' ')
+        self.about1 = text_font.render(' '.join(self.text[:2]), True, 'green')
+        self.about2 = text_font.render(' '.join(self.text[2:5]), True, 'green')
+        self.about3 = text_font.render(' '.join(self.text[5:7]), True, 'green')
+        self.get_it = False
+
+    def render_text(self, screen):
+        screen.blit(self.pay, (self.x + 58, self.y + 100))
+        screen.blit(self.completed, (self.x + 200, self.y + 100))
+        screen.blit(self.about1, (self.x + 180, self.y))
+        screen.blit(self.about2, (self.x + 180, self.y + 30))
+        screen.blit(self.about3, (self.x + 180, self.y + 60))
+        self.completed_sprites.draw(screen)
+
+    def update(self, pos_mouse):
+        global mojo, completed_quest
+        if self.get_it is False:
+            self.money.update(pos_mouse)
+            if self.money.is_clicked:
+                if quest_form[self.type][2] == quest_form[self.type][3]:
+                    mojo += quest_form[self.type][1]
+                    money_png.change_stat(mojo)
+                    self.money = pygame.sprite.Sprite()
+                    self.money.image = load_image(r'buttons_test\completed7.png')
+                    self.money.rect = self.money.image.get_rect()
+                    self.money.rect.x = self.x + 30
+                    self.money.rect.y = self.y - 10
+                    self.completed_sprites = pygame.sprite.Group()
+                    self.completed_sprites.add(self.money)
+                    completed_quest += 1
+                    self.get_it = True
+
 
 def menu():
     global running_menu
@@ -195,8 +270,7 @@ def game():
     global choise, all_houses, mojo, running_game, map, choise_defeat, running_quest
     board = Map(8, 8, 100, 400, 20)
     create_houses(400, 20, 8, 8, 100)
-    m = 11
-    p = 6
+
     while running_game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -218,6 +292,7 @@ def game():
                 all_buttons.update(event.pos)
         screen.fill('black')
         screen.blit(background, (0, 0))
+        pygame.draw.rect(screen, 'black', (0, 0, 300, 2000), 0)
 
         house_button.draw(screen)
         defeat_button.draw(screen)
@@ -244,25 +319,24 @@ def game():
         if escape_button.is_clicked:
             running_game = False
         if quest_button.is_clicked:
-            mojo += 100
             money_png.change_stat(mojo)
-            m = 0
-            p = 0
+
             quest_button.draw_choise(screen)
             quest_button.is_clicked = False
-        if m < 11:
-            mojo_anim.update()
-            m += 1
-        if p < 6:
-            peoples_anim.update()
-            p += 1
+            running_game = False
+            running_quest = True
+
         pygame.display.flip()
     if running_quest:
         quest()
 
 
 def quest():
-    global running_quest, running_game
+    global running_quest, running_game, m, c, completed_quest
+    quest_sprite_form_1.set_quest(random.randint(0, 3), screen)
+    quest_sprite_form_2.set_quest(random.randint(0, 3), screen)
+    quest_sprite_form_3.set_quest(random.randint(0, 3), screen)
+    quest_sprite_form_4.set_quest(random.randint(0, 3), screen)
     while running_quest:
         screen.fill('blue')
         for event in pygame.event.get():
@@ -271,19 +345,31 @@ def quest():
             if event.type == pygame.KEYDOWN:
                 if event.key == 27:
                     running_quest = False
-                    running_game = True
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                quest_sprites.update(event.pos)
+        if escape_quest_button.is_clicked:
+            running_quest = False
+            escape_quest_button.is_clicked = False
+        money_png.render(screen)
+        peoples_png.render(screen)
+        all_another_sprites.draw(screen)
+        quest_sprites.draw(screen)
+        quest_sprite_form_1.render_text(screen)
+        quest_sprite_form_2.render_text(screen)
+        quest_sprite_form_3.render_text(screen)
+        quest_sprite_form_4.render_text(screen)
+        if m < 11:
+            mojo_anim.update()
+            m += 1
         pygame.display.flip()
-    if running_game:
-        game()
-
-class House(pygame.sprite.Sprite):
-    def __init__(self, x, y, row, col, map):
-        super().__init__()
-        self.image = load_image('home_' + str(map[row][col][1]) + '.png')
-        self.image.convert()
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+    running_game = True
+    if completed_quest == 4:
+        quest_sprite_form_1.set_quest(random.randint(0, 3), screen)
+        quest_sprite_form_2.set_quest(random.randint(0, 3), screen)
+        quest_sprite_form_3.set_quest(random.randint(0, 3), screen)
+        quest_sprite_form_4.set_quest(random.randint(0, 3), screen)
+        completed_quest = 0
+    game()
 
 
 def render_choise_hoses(scr):
@@ -295,7 +381,7 @@ def render_choise_hoses(scr):
             text = text_font.render(f'{keys[i]} {types[keys[i]]}', True, 'yellow')
         else:
             text = text_font.render(f'{keys[i]} {types[keys[i]]}', True, 'blue')
-        scr.blit(text, (60, i * 50))
+        scr.blit(text, (0, 300 + i * 50))
 
 
 def render_choise_defeat(screen):
@@ -307,7 +393,7 @@ def render_choise_defeat(screen):
             text = text_font.render(f'{keys[i]} {types_defeat[keys[i]]}', True, 'yellow')
         else:
             text = text_font.render(f'{keys[i]} {types_defeat[keys[i]]}', True, 'blue')
-        screen.blit(text, (60, i * 50))
+        screen.blit(text, (0, 300 + i * 50))
 
 
 def load_image(name):
@@ -346,8 +432,14 @@ quest_button = Button('quest.png', 0, 130, 64, 64, 'Квесты')
 escape_button = Button('escape.png', 0, 195, 64, 64, 'Выход')
 play_menu_button = Button('game.png', 600, 300, 64, 64, 'Играть', 0)
 escape_menu_button = Button('escape.png', 600, 370, 64, 64, 'Выход из игры', 0)
+escape_quest_button = Button('escape.png', 0, 0, 64, 64, '')
+
 mojo_anim = AnimatedSprite(load_image(r'test_animations\mojo_anim.png'), 11, 1, 0, 800)
 peoples_anim = AnimatedSprite(load_image(r'test_animations\peoples_anim.png'), 6, 1, 0, 750)
+quest_sprite_form_1 = Quest('quest_form.png', 500, 100)
+quest_sprite_form_2 = Quest('quest_form.png', 500, 250)
+quest_sprite_form_3 = Quest('quest_form.png', 500, 400)
+quest_sprite_form_4 = Quest('quest_form.png', 500, 550)
 background = load_image('background.png')
 all_buttons.add(house_button)
 all_buttons.add(escape_button)
@@ -359,10 +451,14 @@ anim_sprites.add(mojo_anim)
 anim_sprites.add(peoples_anim)
 menu_sprites.add(play_menu_button)
 menu_sprites.add(escape_menu_button)
+quest_sprites.add(quest_sprite_form_1)
+quest_sprites.add(quest_sprite_form_2)
+quest_sprites.add(quest_sprite_form_3)
+quest_sprites.add(quest_sprite_form_4)
+quest_sprites.add(escape_quest_button)
 running = True
 if __name__ == '__main__':
     menu()
-
 
 file = open('map.txt', 'w')
 s = ''
