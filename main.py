@@ -32,10 +32,6 @@ running_quest = False
 logo = tittle_font.render('YA_GAME', True, 'white')
 clock = pygame.time.Clock()
 clock.tick(10)
-m = 11
-p = 6
-c = 7
-completed_quest = 0
 info_build = {'type': 'None'}
 with open('map.json') as mapjson:
     info_map = json.load(mapjson)
@@ -43,7 +39,9 @@ with open('info_playe.json') as playerjson:
     inf = json.load(playerjson)
     mojo = inf['mojo']
     peoples = inf['peoples']
-
+    completed_quest = inf['completed']
+with open('completed_quests.json') as quesjson:
+    completed_quest_info = json.load(quesjson)
 
 class Map:
     def __init__(self, width, height, size, x, y):
@@ -200,7 +198,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
 
 
 class Quest(pygame.sprite.Sprite):
-    def __init__(self, image, x, y):
+    def __init__(self, image, x, y, num_of_que):
         self.current_value = 0
         self.progress = 0
         global quest_sprites
@@ -214,6 +212,7 @@ class Quest(pygame.sprite.Sprite):
         self.rect.y = y
         self.get_it = False
         self.completed_sprites = pygame.sprite.Group()
+        self.num_of_que = num_of_que
 
     def set_quest(self, id):
         global peoples
@@ -240,6 +239,15 @@ class Quest(pygame.sprite.Sprite):
         screen.blit(self.about1, (self.x + 180, self.y))
         screen.blit(self.about2, (self.x + 180, self.y + 30))
         screen.blit(self.about3, (self.x + 180, self.y + 60))
+        if self.get_it is False:
+            self.money.image = load_image(r'buttons_test\mojo_quest.png')
+        else:
+            self.money.image = load_image(r'buttons_test\completed7.png')
+        self.money.rect = self.money.image.get_rect()
+        self.money.rect.x = self.x + 30
+        self.money.rect.y = self.y - 10
+        self.completed_sprites = pygame.sprite.Group()
+        self.completed_sprites.add(self.money)
         self.completed_sprites.draw(screen)
 
     def update(self, pos_mouse):
@@ -259,6 +267,7 @@ class Quest(pygame.sprite.Sprite):
                     self.completed_sprites.add(self.money)
                     completed_quest += 1
                     self.get_it = True
+                    completed_quest_info[self.num_of_que]['getting'] = True
 
     def check(self):
         if self.type in [0, 3]:
@@ -268,6 +277,7 @@ class Quest(pygame.sprite.Sprite):
         if self.type in [1, 2]:
             if get_houses_count() != self.current_value:
                 self.progress = get_houses_count() - self.current_value
+        completed_quest_info[self.num_of_que]['comp'] = self.progress
         if self.progress >= int(quest_form[self.type][3]):
             self.completed = text_font.render(f'{self.progress}/{quest_form[self.type][3]}', True, 'green')
         else:
@@ -372,11 +382,11 @@ def game():
             running_quest = True
         pygame.display.update()
     if running_quest:
-        sys.exit(quest())
+        quest()
 
 
 def quest():
-    global running_quest, running_game, m, c, completed_quest
+    global running_quest, running_game, m, c, completed_quest, completed_quest_info
     while running_quest:
         screen.fill('blue')
         for event in pygame.event.get():
@@ -398,18 +408,34 @@ def quest():
         quest_sprite_form_2.render_text(screen)
         quest_sprite_form_3.render_text(screen)
         quest_sprite_form_4.render_text(screen)
-        if m < 11:
-            mojo_anim.update()
-            m += 1
         pygame.display.flip()
     running_game = True
     if completed_quest == 4:
-        quest_sprite_form_1.set_quest(random.randint(0, 3))
-        quest_sprite_form_2.set_quest(random.randint(0, 3))
-        quest_sprite_form_3.set_quest(random.randint(0, 3))
-        quest_sprite_form_4.set_quest(random.randint(0, 3))
+        print('да')
+        for i in range(len(completed_quest_info)):
+            completed_quest_info[i]['type'] = random.randint(0, 3)
+        quest_sprite_form_1.set_quest(completed_quest_info[0]['type'])
+        quest_sprite_form_2.set_quest(completed_quest_info[1]['type'])
+        quest_sprite_form_3.set_quest(completed_quest_info[2]['type'])
+        quest_sprite_form_4.set_quest(completed_quest_info[3]['type'])
+        completed_quest_info[0]['comp'] = 0
+        completed_quest_info[1]['comp'] = 0
+        completed_quest_info[2]['comp'] = 0
+        completed_quest_info[3]['comp'] = 0
+        completed_quest_info[0]['getting'] = False
+        completed_quest_info[1]['getting'] = False
+        completed_quest_info[2]['getting'] = False
+        completed_quest_info[3]['getting'] = False
+        quest_sprite_form_1.progress = completed_quest_info[0]['comp']
+        quest_sprite_form_2.progress = completed_quest_info[1]['comp']
+        quest_sprite_form_3.progress = completed_quest_info[2]['comp']
+        quest_sprite_form_4.progress = completed_quest_info[3]['comp']
+        quest_sprite_form_1.get_it = False
+        quest_sprite_form_2.get_it = False
+        quest_sprite_form_3.get_it = False
+        quest_sprite_form_4.get_it = False
         completed_quest = 0
-    sys.exit(game())
+    game()
 
 
 def render_choise_hoses(scr):
@@ -527,10 +553,10 @@ escape_quest_button = Button('escape.png', 0, 0, 64, 64, '')
 upgrade_button = Button('upgrade.png', 1460, 75, 64, 64, '')
 mojo_anim = AnimatedSprite(load_image(r'test_animations\mojo_anim.png'), 11, 1, 0, 800)
 peoples_anim = AnimatedSprite(load_image(r'test_animations\peoples_anim.png'), 6, 1, 0, 750)
-quest_sprite_form_1 = Quest('quest_form.png', 500, 100)
-quest_sprite_form_2 = Quest('quest_form.png', 500, 250)
-quest_sprite_form_3 = Quest('quest_form.png', 500, 400)
-quest_sprite_form_4 = Quest('quest_form.png', 500, 550)
+quest_sprite_form_1 = Quest('quest_form.png', 500, 100, 0)
+quest_sprite_form_2 = Quest('quest_form.png', 500, 250, 1)
+quest_sprite_form_3 = Quest('quest_form.png', 500, 400, 2)
+quest_sprite_form_4 = Quest('quest_form.png', 500, 550, 3)
 background = load_image('background.png')
 all_buttons.add(house_button)
 all_buttons.add(escape_button)
@@ -551,15 +577,30 @@ quest_sprites.add(quest_sprite_form_4)
 quest_sprites.add(escape_quest_button)
 running = True
 if __name__ == '__main__':
-    quest_sprite_form_1.set_quest(random.randint(0, 3))
-    quest_sprite_form_2.set_quest(random.randint(0, 3))
-    quest_sprite_form_3.set_quest(random.randint(0, 3))
-    quest_sprite_form_4.set_quest(random.randint(0, 3))
+    for i in range(len(completed_quest_info)):
+        if completed_quest_info[i]['type'] == -1:
+            completed_quest_info[i]['type'] = random.randint(0, 3)
+    quest_sprite_form_1.set_quest(completed_quest_info[0]['type'])
+    quest_sprite_form_2.set_quest(completed_quest_info[1]['type'])
+    quest_sprite_form_3.set_quest(completed_quest_info[2]['type'])
+    quest_sprite_form_4.set_quest(completed_quest_info[3]['type'])
+    quest_sprite_form_1.progress = completed_quest_info[0]['comp']
+    quest_sprite_form_2.progress = completed_quest_info[1]['comp']
+    quest_sprite_form_3.progress = completed_quest_info[2]['comp']
+    quest_sprite_form_4.progress = completed_quest_info[3]['comp']
+    quest_sprite_form_1.get_it = completed_quest_info[0]['getting']
+    quest_sprite_form_2.get_it = completed_quest_info[1]['getting']
+    quest_sprite_form_3.get_it = completed_quest_info[2]['getting']
+    quest_sprite_form_4.get_it = completed_quest_info[3]['getting']
     menu()
 
+print(completed_quest_info)
 file = open('map.json', 'w')
 json.dump(info_map, file)
 file.close()
 file = open('info_playe.json', 'w')
-json.dump({'mojo': mojo, 'peoples': peoples}, file)
+json.dump({'mojo': mojo, 'peoples': peoples, 'completed': completed_quest}, file)
+file.close()
+file = open('completed_quests.json', 'w')
+json.dump(completed_quest_info, file)
 file.close()
