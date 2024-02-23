@@ -4,6 +4,7 @@ import random
 import sys
 import json
 
+'''подготовка данных'''
 pygame.init()
 pygame.font.init()
 buttons_clicked = [False, False, False]
@@ -11,7 +12,6 @@ all_houses = pygame.sprite.Group()
 all_buttons = pygame.sprite.Group()
 all_another_sprites = pygame.sprite.Group()
 all_cells_sprites = pygame.sprite.Group()
-anim_sprites = pygame.sprite.Group()
 menu_sprites = pygame.sprite.Group()
 quest_sprites = pygame.sprite.Group()
 save_sprites = pygame.sprite.Group()
@@ -47,6 +47,7 @@ completed_quest_info = [{}, {}, {}, {}]
 address = 1
 
 
+# карта
 class Map:
     def __init__(self, width, height, size, x, y):
         self.width = width
@@ -65,6 +66,7 @@ class Map:
                 one.append([x + size * i, y + size * j])
             self.coords_map.append(one)
 
+    #  проверка нажатий
     def get_click(self, mouse_pos):
         for i in range(self.width):
             for j in range(self.height):
@@ -77,6 +79,7 @@ class Map:
                     self.col = j
                     return True
 
+    # размещение новых объектов на карте
     def place(self, choise):
         global info_map
         global mojo
@@ -132,6 +135,7 @@ class Map:
         info_map = my_map
 
 
+# спрайт клетки карты
 class Cell(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -142,6 +146,7 @@ class Cell(pygame.sprite.Sprite):
         self.image.convert()
 
 
+#  кнопка
 class Button(pygame.sprite.Sprite):
     def __init__(self, name_image, pos_x, pos_y, size1, size2, text='', rect_color=1):
         self.x = pos_x
@@ -170,6 +175,7 @@ class Button(pygame.sprite.Sprite):
         pygame.draw.rect(screen, (0, 255, 0), (self.x, self.y, self.size[0], self.size[1]), 0)
 
 
+#  спрайт дома
 class House(pygame.sprite.Sprite):
     def __init__(self, x, y, row, col):
         super().__init__()
@@ -180,6 +186,7 @@ class House(pygame.sprite.Sprite):
         self.rect.y = y
 
 
+# спрайт школы
 class School(pygame.sprite.Sprite):
     def __init__(self, x, y, row, col):
         super().__init__()
@@ -190,6 +197,7 @@ class School(pygame.sprite.Sprite):
         self.rect.y = y
 
 
+# спрайт оффиса
 class Office(pygame.sprite.Sprite):
     def __init__(self, x, y, row, col):
         super().__init__()
@@ -200,6 +208,7 @@ class Office(pygame.sprite.Sprite):
         self.rect.y = y
 
 
+# спрайт завода
 class Factory(pygame.sprite.Sprite):
     def __init__(self, x, y, row, col):
         super().__init__()
@@ -210,6 +219,7 @@ class Factory(pygame.sprite.Sprite):
         self.rect.y = y
 
 
+#  спрайты для статистики (монеты, количество людей)
 class Stat(pygame.sprite.Sprite):
     def __init__(self, x, y, stat, image):
         self.x = x
@@ -223,6 +233,7 @@ class Stat(pygame.sprite.Sprite):
         self.rect.y = y
         self.stat = text_font.render(str(stat), True, 'green')
 
+    # прорисовка
     def render(self, screen):
         pygame.draw.rect(screen, 'black', (self.x, self.y, 200, 50), 0)
         screen.blit(self.stat, (self.x + 60, self.y + 10))
@@ -231,38 +242,7 @@ class Stat(pygame.sprite.Sprite):
         self.stat = text_font.render(str(stat), True, 'green')
 
 
-class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, sheet, columns, rows, x, y):
-        super().__init__(anim_sprites)
-        self.frames = []
-        self.cut_sheet(sheet, columns, rows)
-        self.cur_frame = 0
-        self.image = self.frames[self.cur_frame]
-        self.image.convert_alpha()
-        self.rect = self.rect.move(x, y)
-        self.end = columns * rows
-        self.d = 4
-
-    def cut_sheet(self, sheet, columns, rows):
-        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
-                                sheet.get_height() // rows)
-        for j in range(rows):
-            for i in range(columns):
-                frame_location = (self.rect.w * i, self.rect.h * j)
-                self.frames.append(sheet.subsurface(pygame.Rect(
-                    frame_location, self.rect.size)))
-
-    def update(self):
-        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
-        self.image = self.frames[self.cur_frame]
-
-    def check(self):
-        if self.cur_frame != self.end - 1:
-            return False
-        else:
-            return True
-
-
+#  квест
 class Quest(pygame.sprite.Sprite):
     def __init__(self, image, x, y, num_of_que):
         self.current_value = 0
@@ -280,6 +260,7 @@ class Quest(pygame.sprite.Sprite):
         self.completed_sprites = pygame.sprite.Group()
         self.num_of_que = num_of_que
 
+    # создание информации для квеста
     def set_quest(self, id):
         global peoples
         self.completed_sprites = pygame.sprite.Group()
@@ -316,6 +297,7 @@ class Quest(pygame.sprite.Sprite):
         self.completed_sprites.add(self.money)
         self.completed_sprites.draw(screen)
 
+    # проверка нажатий
     def update(self, pos_mouse):
         global mojo, completed_quest
         if self.get_it is False:
@@ -335,6 +317,7 @@ class Quest(pygame.sprite.Sprite):
                     self.get_it = True
                     completed_quest_info[self.num_of_que]['getting'] = True
 
+    #  проверка выполнения квеста
     def check(self):
         if self.type in [0, 3]:
             global peoples
@@ -350,6 +333,7 @@ class Quest(pygame.sprite.Sprite):
             self.completed = text_font.render(f'{self.progress}/{quest_form[self.type][3]}', True, 'white')
 
 
+# меню
 def menu():
     global running_menu
     global running_game
@@ -379,6 +363,7 @@ def menu():
         pygame.display.flip()
 
 
+# игра и её интерфейс
 def game():
     global choise, all_houses, mojo, running_game, choise_defeat, running_quest, info_build, choise_type, running_menu
     board = Map(8, 8, 100, 400, 20)
@@ -453,7 +438,6 @@ def game():
         escape_button.draw(screen)
         upgrade_button.draw(screen)
         education_button.draw(screen)
-
         all_cells_sprites.draw(screen)
         all_houses.draw(screen)
         all_buttons.draw(screen)
@@ -516,7 +500,7 @@ def game():
                 screen.blit(houses_info[i], (0, 320 + i * 50))
         if escape_button.is_clicked:
             saving()
-            clear_files()
+            clear_map()
             running_game = False
             running_menu = True
             escape_button.is_clicked = False
@@ -533,6 +517,7 @@ def game():
         pygame.display.flip()
 
 
+# экран квестов
 def quest():
     global running_quest, running_game, completed_quest, completed_quest_info
     while running_quest:
@@ -584,6 +569,7 @@ def quest():
         completed_quest = 0
 
 
+# окно с выбором сохранения
 def load_save():
     global screen, running_save, running_menu, running_game, address, delete_save, running_confirmation
     while running_save:
@@ -606,8 +592,8 @@ def load_save():
             escape_save_button.is_clicked = False
 
         if save_1.is_clicked:
-            load_files()
             address = '1'
+            load_files()
             save_1.is_clicked = False
             running_game = True
             running_save = False
@@ -641,9 +627,9 @@ def load_save():
         pygame.display.flip()
 
 
+# окно с подтверждением
 def confirmation():
     global running_confirmation, running_save, running_menu, confirmation_sprites
-    print(info_map)
     while running_confirmation:
         screen.fill('blue')
         for event in pygame.event.get():
@@ -666,6 +652,7 @@ def confirmation():
         pygame.display.flip()
 
 
+#  удаление сохранения
 def deleter():
     global completed_quest_info, mojo, peoples, completed_quest, info_map
     completed_quest_info = [{}, {}, {}, {}]
@@ -684,8 +671,6 @@ def deleter():
             info_map[f'{i}, {j}']['max_level'] = 0
             info_map[f'{i}, {j}']['image'] = None
             info_map[f'{i}, {j}']['peoples'] = [0]
-    print(info_map)
-    print(completed_quest_info)
     file = open(f'saves\\{delete_save}\\map.json', 'w')
     json.dump(info_map, file)
     file.close()
@@ -697,15 +682,16 @@ def deleter():
     file.close()
 
 
+#  загрузка изображения
 def load_image(name):
     fullname = os.path.join('data', name)
     image = pygame.image.load(fullname)
     return image
 
 
+# прорисовка домов
 def render_house(x, y, row, col):
-    global all_houses
-    global map
+    global all_houses, info_map
     try:
         if info_map[f'{row}, {col}']['type'] == 'house':
             sprite = House(x, y, row, col)
@@ -730,7 +716,7 @@ def create_houses(x, y, row, col, size):
 
 
 def clear_map():
-    global info_map
+    global info_map, all_houses
     for x in range(9):
         for y in range(9):
             info_map[f'{x}, {y}'] = {"type": "grass",
@@ -739,6 +725,7 @@ def clear_map():
                                      "image": None,
                                      "peoples":
                                          [0]}
+    all_houses = pygame.sprite.Group()
 
 
 def get_houses_count():
@@ -754,6 +741,7 @@ def get_info_build(map_index):
     info_build = map_index
 
 
+# прорисовка информации о здании
 def draw_info_build(screen):
     texts = []
     global info_build
@@ -776,6 +764,7 @@ def draw_info_build(screen):
         screen.blit(texts[i], (1260, 20 + i * 40))
 
 
+#  проверка информации о здании
 def check_info_build():
     global info_build, peoples, mojo
     if 'house' == info_build['type']:
@@ -788,11 +777,12 @@ def check_info_build():
                 money_png.change_stat(mojo)
 
 
+# очистка сохранения
 def clear_files():
     global info_map, inf, mojo, peoples, completed_quest, completed_quest_info, all_houses, choise, choise_type
     info_map = {}
     inf = {}
-    mojo = 0
+    mojo = 1000
     peoples = 0
     completed_quest = 0
     completed_quest_info = {}
@@ -802,9 +792,11 @@ def clear_files():
     clear_map()
 
 
+# загрузка сохранения
 def load_files():
     global quest_form, info_map, inf, mojo, peoples, completed_quest, completed_quest_info, address
     quest_form = [elem[:-1].split('/') for elem in open('''quests.txt''', 'r', encoding='utf8').readlines()]
+    print(address)
     for elem in quest_form:
         quest_form[int(elem[0])] = [elem[1], int(elem[2]), elem[3], elem[4]]
     with open(f'saves\{address}\map.json') as mapjson:
@@ -833,7 +825,10 @@ def load_files():
     quest_sprite_form_4.get_it = completed_quest_info[3]['getting']
 
 
+# сохранение игры
+# происходит при каждом выходе в меню
 def saving():
+    global info_map, mojo, peoples, completed_quest, completed_quest_info
     file = open(f'saves\\{address}\\map.json', 'w')
     json.dump(info_map, file)
     file.close()
@@ -845,6 +840,7 @@ def saving():
     file.close()
 
 
+# создание всех спрайтов, необходимых для игры
 peoples_png = Stat(0, 750, peoples, 'peoples.png')
 money_png = Stat(0, 800, mojo, 'mojo.png')
 house_button = Button('homes.png', 0, 0, 64, 64, 'Город')
@@ -866,8 +862,6 @@ delete_3 = Button('delete.png', 530, 370, 64, 64, '', 0)
 ok = Button('ok.png', 600, 300, 64, 64, 'Да', 0)
 no = Button('delete.png', 600, 370, 64, 64, 'Нет', 0)
 escape_save_button = Button('escape.png', 600, 440, 64, 64, 'Обратно в меню', 0)
-mojo_anim = AnimatedSprite(load_image(r'test_animations\mojo_anim.png'), 11, 1, 0, 800)
-peoples_anim = AnimatedSprite(load_image(r'test_animations\peoples_anim.png'), 6, 1, 0, 750)
 quest_sprite_form_1 = Quest('quest_form.png', 500, 100, 0)
 quest_sprite_form_2 = Quest('quest_form.png', 500, 250, 1)
 quest_sprite_form_3 = Quest('quest_form.png', 500, 400, 2)
@@ -888,8 +882,6 @@ save_sprites.add(delete_1)
 save_sprites.add(delete_2)
 save_sprites.add(delete_3)
 save_sprites.add(escape_save_button)
-anim_sprites.add(mojo_anim)
-anim_sprites.add(peoples_anim)
 menu_sprites.add(play_menu_button)
 menu_sprites.add(escape_menu_button)
 quest_sprites.add(quest_sprite_form_1)
